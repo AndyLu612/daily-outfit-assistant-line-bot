@@ -29,9 +29,12 @@ def create_app() -> Flask:
         weather = weather_api.get_forecast(city)
         reply = build_reply(intent, weather)
 
-        if user_id:
-            store.save_user_city(user_id, city)
-        store.save_query_log(user_id, intent, city, text)
+        try:
+            if user_id:
+                store.save_user_city(user_id, city)
+            store.save_query_log(user_id, intent, city, text)
+        except Exception as error:
+            print(f"Firestore write failed: {error}", flush=True)
 
         return {
             "intent": intent,
