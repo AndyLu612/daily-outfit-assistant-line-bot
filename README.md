@@ -10,6 +10,7 @@
 - 依地區查詢天氣
 - 記錄使用者預設地區與查詢紀錄到 Firebase Firestore
 - 以 Dialogflow fulfillment webhook 為主要流程
+- 可選擇串接 Gemini，讓回覆更自然
 - 保留 LINE webhook 作為備用直接串接方式
 - 沒有 API 金鑰時，會使用內建範例天氣資料，方便開發測試
 
@@ -59,6 +60,8 @@ curl "http://127.0.0.1:5000/demo?text=今天穿什麼&city=台中市"
 
 ```text
 CWA_API_KEY=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.0-flash
 DEFAULT_CITY=台中市
 GOOGLE_APPLICATION_CREDENTIALS=
 ```

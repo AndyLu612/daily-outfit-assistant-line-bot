@@ -24,6 +24,10 @@ def detect_intent(text: str) -> str:
 
 def normalize_intent(intent_name: str, text: str = "") -> str:
     name = intent_name.lower().strip()
+    text_intent = detect_intent(text)
+    if text_intent in {"outfit", "umbrella"}:
+        return text_intent
+
     mapping = {
         "今日天氣查詢": "weather",
         "天氣查詢": "weather",

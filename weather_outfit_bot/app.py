@@ -3,6 +3,7 @@ from flask import Flask, abort, jsonify, request
 from .advice import build_reply, detect_intent, extract_city, normalize_intent
 from .config import Config
 from .firebase_store import FirestoreStore
+from .gemini_client import GeminiClient
 from .line_api import LineApi
 from .weather_api import WeatherApi
 
@@ -12,6 +13,7 @@ def create_app() -> Flask:
     weather_api = WeatherApi(Config.cwa_api_key)
     store = FirestoreStore()
     line_api = LineApi(Config.line_channel_access_token, Config.line_channel_secret)
+    gemini = GeminiClient(Config.gemini_api_key, Config.gemini_model)
 
     def normalize_dialogflow_city(value) -> str:
         if isinstance(value, str):
@@ -27,7 +29,8 @@ def create_app() -> Flask:
         city = city_hint or extract_city(text, saved_city or Config.default_city)
         intent = normalize_intent(intent_hint, text) if intent_hint else detect_intent(text)
         weather = weather_api.get_forecast(city)
-        reply = build_reply(intent, weather)
+        rule_reply = build_reply(intent, weather)
+        reply = gemini.improve_reply(text, intent, weather, rule_reply)
 
         try:
             if user_id:
@@ -42,6 +45,7 @@ def create_app() -> Flask:
             "reply": reply,
             "firebaseEnabled": store.enabled,
             "weatherApiEnabled": bool(Config.cwa_api_key),
+            "geminiEnabled": gemini.enabled,
         }
 
     @app.get("/")
@@ -52,6 +56,7 @@ def create_app() -> Flask:
                 "demo": "/demo?text=今天台中要帶傘嗎",
                 "firebaseEnabled": store.enabled,
                 "weatherApiEnabled": bool(Config.cwa_api_key),
+                "geminiEnabled": gemini.enabled,
             }
         )
 
@@ -65,6 +70,8 @@ def create_app() -> Flask:
                 "lineAccessTokenConfigured": bool(Config.line_channel_access_token),
                 "lineSecretConfigured": bool(Config.line_channel_secret),
                 "cwaApiKeyConfigured": bool(Config.cwa_api_key),
+                "geminiApiKeyConfigured": bool(Config.gemini_api_key),
+                "geminiModel": Config.gemini_model,
                 "firebaseEnabled": store.enabled,
                 "defaultCity": Config.default_city,
             }
