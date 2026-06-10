@@ -43,6 +43,19 @@ def create_app() -> Flask:
             }
         )
 
+    @app.get("/health")
+    def health():
+        return jsonify(
+            {
+                "status": "ok",
+                "lineAccessTokenConfigured": bool(Config.line_channel_access_token),
+                "lineSecretConfigured": bool(Config.line_channel_secret),
+                "cwaApiKeyConfigured": bool(Config.cwa_api_key),
+                "firebaseEnabled": store.enabled,
+                "defaultCity": Config.default_city,
+            }
+        )
+
     @app.get("/demo")
     def demo():
         text = request.args.get("text", "今天台中穿什麼")
@@ -65,8 +78,11 @@ def create_app() -> Flask:
             if message.get("type") != "text":
                 continue
             user_id = event.get("source", {}).get("userId", "")
-            result = handle_text(message.get("text", ""), user_id=user_id)
-            line_api.reply_text(event.get("replyToken", ""), result["reply"])
+            try:
+                result = handle_text(message.get("text", ""), user_id=user_id)
+                line_api.reply_text(event.get("replyToken", ""), result["reply"])
+            except Exception as error:
+                print(f"LINE callback error: {error}", flush=True)
         return "OK"
 
     @app.post("/dialogflow")
