@@ -13,6 +13,15 @@ def create_app() -> Flask:
     store = FirestoreStore()
     line_api = LineApi(Config.line_channel_access_token, Config.line_channel_secret)
 
+    def normalize_dialogflow_city(value) -> str:
+        if isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            return value.get("city") or value.get("admin-area") or value.get("subadmin-area") or ""
+        if isinstance(value, list) and value:
+            return normalize_dialogflow_city(value[0])
+        return ""
+
     def handle_text(text: str, user_id: str = "", city_hint: str = "", intent_hint: str = "") -> dict:
         saved_city = store.get_user_city(user_id) if user_id else None
         city = city_hint or extract_city(text, saved_city or Config.default_city)
@@ -48,6 +57,8 @@ def create_app() -> Flask:
         return jsonify(
             {
                 "status": "ok",
+                "dialogflowWebhook": "/dialogflow",
+                "lineWebhookOptional": "/callback",
                 "lineAccessTokenConfigured": bool(Config.line_channel_access_token),
                 "lineSecretConfigured": bool(Config.line_channel_secret),
                 "cwaApiKeyConfigured": bool(Config.cwa_api_key),
@@ -92,7 +103,7 @@ def create_app() -> Flask:
         text = query_result.get("queryText", "")
         parameters = query_result.get("parameters", {})
         intent_hint = query_result.get("intent", {}).get("displayName", "")
-        city_hint = parameters.get("city") or parameters.get("geo-city") or ""
+        city_hint = normalize_dialogflow_city(parameters.get("city") or parameters.get("geo-city"))
         original_payload = payload.get("originalDetectIntentRequest", {}).get("payload", {})
         user_id = original_payload.get("data", {}).get("source", {}).get("userId", "dialogflow-user")
 
