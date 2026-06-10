@@ -29,8 +29,8 @@ def create_app() -> Flask:
         city = city_hint or extract_city(text, saved_city or Config.default_city)
         intent = normalize_intent(intent_hint, text) if intent_hint else detect_intent(text)
         weather = weather_api.get_forecast(city)
-        rule_reply = build_reply(intent, weather)
-        reply = gemini.improve_reply(text, intent, weather, rule_reply)
+        rule_reply = build_reply(intent, weather, text)
+        reply, used_gemini = gemini.improve_reply(text, intent, weather, rule_reply)
 
         try:
             if user_id:
@@ -46,6 +46,8 @@ def create_app() -> Flask:
             "firebaseEnabled": store.enabled,
             "weatherApiEnabled": bool(Config.cwa_api_key),
             "geminiEnabled": gemini.enabled,
+            "geminiUsed": used_gemini,
+            "replySource": "gemini" if used_gemini else "rules",
         }
 
     @app.get("/")

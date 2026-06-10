@@ -118,7 +118,14 @@ def umbrella_advice(weather: WeatherInfo) -> str:
     return "下雨機率不高，通常可以不用帶傘。"
 
 
-def activity_advice(weather: WeatherInfo) -> str:
+def activity_advice(weather: WeatherInfo, text: str = "") -> str:
+    if "曬衣" in text:
+        if weather.rain_probability >= 60:
+            return "不建議把衣服曬在戶外，今天下雨機率偏高，建議改放室內通風處或使用除濕機。"
+        if weather.rain_probability >= 30:
+            return "不太建議曬在戶外，今天有機會下雨，衣服可能不容易乾。建議放室內通風處比較保險。"
+        return "今天下雨機率不高，可以曬衣服；如果是厚衣物，建議放在通風或有陽光的位置。"
+
     if weather.rain_probability >= 60:
         return "今天較不適合長時間戶外活動，建議改成室內行程。"
     if weather.max_temp >= 32:
@@ -126,7 +133,7 @@ def activity_advice(weather: WeatherInfo) -> str:
     return "今天整體適合外出活動，記得依體感調整衣物。"
 
 
-def build_reply(intent: str, weather: WeatherInfo) -> str:
+def build_reply(intent: str, weather: WeatherInfo, text: str = "") -> str:
     summary = (
         f"{weather.city}今日天氣：{weather.weather}，"
         f"溫度約 {weather.min_temp}-{weather.max_temp} 度，"
@@ -137,5 +144,5 @@ def build_reply(intent: str, weather: WeatherInfo) -> str:
     if intent == "outfit":
         return f"{summary}\n{outfit_advice(weather)}\n{umbrella_advice(weather)}"
     if intent == "activity":
-        return f"{summary}\n{activity_advice(weather)}\n{umbrella_advice(weather)}"
+        return f"{summary}\n{activity_advice(weather, text)}\n{umbrella_advice(weather)}"
     return f"{summary}\n{outfit_advice(weather)}"

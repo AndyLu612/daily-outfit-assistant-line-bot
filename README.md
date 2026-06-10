@@ -70,6 +70,19 @@ GOOGLE_APPLICATION_CREDENTIALS=
 
 如果暫時沒有 Firebase 或中央氣象署 API 金鑰，系統仍可用範例資料執行。正式繳交前建議至少接上中央氣象署 API。
 
+## Gemini 在系統中的用途
+
+後端會先用規則判斷天氣、穿搭、帶傘與活動建議，確保內容不會亂編。若 Vercel 有設定 `GEMINI_API_KEY`，系統會再把規則答案交給 Gemini 改寫成更自然的生活化回覆。
+
+測試 `/demo` 時可以看：
+
+```text
+replySource: gemini
+geminiUsed: true
+```
+
+看到這兩個值代表 AI 有實際參與回覆生成。
+
 ## Dialogflow 接法
 
 LINE Developers 的 webhook URL 使用 Dialogflow LINE Integration 提供的網址。
