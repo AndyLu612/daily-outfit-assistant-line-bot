@@ -1,0 +1,6 @@
+.env
+secrets/*
+!secrets/README.md
+__pycache__/
+*.pyc
+.venv/

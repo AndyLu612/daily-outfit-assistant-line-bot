@@ -1,0 +1,93 @@
+from flask import Flask, abort, jsonify, request
+
+from .advice import build_reply, detect_intent, extract_city, normalize_intent
+from .config import Config
+from .firebase_store import FirestoreStore
+from .line_api import LineApi
+from .weather_api import WeatherApi
+
+
+def create_app() -> Flask:
+    app = Flask(__name__)
+    weather_api = WeatherApi(Config.cwa_api_key)
+    store = FirestoreStore()
+    line_api = LineApi(Config.line_channel_access_token, Config.line_channel_secret)
+
+    def handle_text(text: str, user_id: str = "", city_hint: str = "", intent_hint: str = "") -> dict:
+        saved_city = store.get_user_city(user_id) if user_id else None
+        city = city_hint or extract_city(text, saved_city or Config.default_city)
+        intent = normalize_intent(intent_hint, text) if intent_hint else detect_intent(text)
+        weather = weather_api.get_forecast(city)
+        reply = build_reply(intent, weather)
+
+        if user_id:
+            store.save_user_city(user_id, city)
+        store.save_query_log(user_id, intent, city, text)
+
+        return {
+            "intent": intent,
+            "city": city,
+            "reply": reply,
+            "firebaseEnabled": store.enabled,
+            "weatherApiEnabled": bool(Config.cwa_api_key),
+        }
+
+    @app.get("/")
+    def index():
+        return jsonify(
+            {
+                "name": "今日穿搭小幫手 Line Bot",
+                "demo": "/demo?text=今天台中要帶傘嗎",
+                "firebaseEnabled": store.enabled,
+                "weatherApiEnabled": bool(Config.cwa_api_key),
+            }
+        )
+
+    @app.get("/demo")
+    def demo():
+        text = request.args.get("text", "今天台中穿什麼")
+        city = request.args.get("city")
+        if city and city not in text:
+            text = f"{text} {city}"
+        return jsonify(handle_text(text, user_id="demo-user"))
+
+    @app.post("/callback")
+    def callback():
+        if line_api.enabled and not line_api.verify_signature(request.get_data(), request.headers.get("X-Line-Signature", "")):
+            abort(403)
+
+        payload = request.get_json(silent=True) or {}
+        events = payload.get("events", [])
+        for event in events:
+            if event.get("type") != "message":
+                continue
+            message = event.get("message", {})
+            if message.get("type") != "text":
+                continue
+            user_id = event.get("source", {}).get("userId", "")
+            result = handle_text(message.get("text", ""), user_id=user_id)
+            line_api.reply_text(event.get("replyToken", ""), result["reply"])
+        return "OK"
+
+    @app.post("/dialogflow")
+    def dialogflow():
+        payload = request.get_json(silent=True) or {}
+        query_result = payload.get("queryResult", {})
+        text = query_result.get("queryText", "")
+        parameters = query_result.get("parameters", {})
+        intent_hint = query_result.get("intent", {}).get("displayName", "")
+        city_hint = parameters.get("city") or parameters.get("geo-city") or ""
+        original_payload = payload.get("originalDetectIntentRequest", {}).get("payload", {})
+        user_id = original_payload.get("data", {}).get("source", {}).get("userId", "dialogflow-user")
+
+        result = handle_text(text, user_id=user_id, city_hint=city_hint, intent_hint=intent_hint)
+        return jsonify({"fulfillmentText": result["reply"]})
+
+    return app
+
+
+app = create_app()
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
