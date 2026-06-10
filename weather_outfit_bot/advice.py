@@ -13,6 +13,8 @@ class WeatherInfo:
 
 def detect_intent(text: str) -> str:
     text = text.strip()
+    if any(word in text for word in ["雨衣", "雨具", "雨鞋"]):
+        return "umbrella"
     if any(word in text for word in ["跑步", "運動", "騎車", "曬衣", "曬衣服", "出門玩"]):
         return "activity"
     if any(word in text for word in ["傘", "下雨", "雨"]):
@@ -124,7 +126,14 @@ def outfit_advice(weather: WeatherInfo) -> str:
     return base
 
 
-def umbrella_advice(weather: WeatherInfo) -> str:
+def umbrella_advice(weather: WeatherInfo, text: str = "") -> str:
+    if any(word in text for word in ["雨衣", "雨具", "騎車"]):
+        if weather.rain_probability >= 60:
+            return "建議帶雨衣，今天下雨機率偏高，騎車時比雨傘安全也比較實用。"
+        if weather.rain_probability >= 30:
+            return "建議帶輕便雨衣或放一件在車廂，今天有機會下雨，騎車臨時遇雨會比較好應付。"
+        return "下雨機率不高，通常不用特別帶雨衣；如果會長時間騎車，可以備一件輕便雨衣。"
+
     if weather.rain_probability >= 60:
         return "建議帶傘，今天下雨機率偏高。"
     if weather.rain_probability >= 30:
@@ -154,9 +163,9 @@ def build_reply(intent: str, weather: WeatherInfo, text: str = "") -> str:
         f"降雨機率 {weather.rain_probability}%。"
     )
     if intent == "umbrella":
-        return f"{summary}\n{umbrella_advice(weather)}"
+        return f"{summary}\n{umbrella_advice(weather, text)}"
     if intent == "outfit":
-        return f"{summary}\n{outfit_advice(weather)}\n{umbrella_advice(weather)}"
+        return f"{summary}\n{outfit_advice(weather)}\n{umbrella_advice(weather, text)}"
     if intent == "activity":
-        return f"{summary}\n{activity_advice(weather, text)}\n{umbrella_advice(weather)}"
+        return f"{summary}\n{activity_advice(weather, text)}\n{umbrella_advice(weather, text)}"
     return f"{summary}\n{outfit_advice(weather)}"
