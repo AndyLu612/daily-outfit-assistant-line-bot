@@ -13,19 +13,19 @@ class WeatherInfo:
 
 def detect_intent(text: str) -> str:
     text = text.strip()
+    if any(word in text for word in ["跑步", "運動", "騎車", "曬衣", "曬衣服", "出門玩"]):
+        return "activity"
     if any(word in text for word in ["傘", "下雨", "雨"]):
         return "umbrella"
     if any(word in text for word in ["穿", "外套", "短袖", "長袖", "衣服", "穿搭"]):
         return "outfit"
-    if any(word in text for word in ["跑步", "運動", "騎車", "曬衣", "出門玩"]):
-        return "activity"
     return "weather"
 
 
 def normalize_intent(intent_name: str, text: str = "") -> str:
     name = intent_name.lower().strip()
     text_intent = detect_intent(text)
-    if text_intent in {"outfit", "umbrella"}:
+    if text_intent != "weather":
         return text_intent
 
     mapping = {
